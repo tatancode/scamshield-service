@@ -1,0 +1,44 @@
+openapi: 3.0.3
+info:
+  title: Scam Shield Analyzer API
+  version: "1.0"
+  description: Single endpoint that scores messages for scam risk.
+paths:
+  /api/analyze:
+    post:
+      summary: Analyze a message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRequest"
+            examples:
+              sample:
+                value:
+                  message: "Your account has been locked"
+      responses:
+        "200":
+          description: Successful analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeResponse"
+components:
+  schemas:
+    AnalyzeRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: Text to analyze
+    AnalyzeResponse:
+      type: object
+      properties:
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        explanation:
+          type: string

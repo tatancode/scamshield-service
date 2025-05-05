@@ -1,0 +1,14 @@
+version: '3.8'  # This line can be removed as it's obsolete
+services:
+    db:
+        image: postgres:16
+        environment:
+            - POSTGRES_USER=scamshield
+            - POSTGRES_PASSWORD=scamshield
+            - POSTGRES_DB=scamshield
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+volumes:
+    postgres_data:

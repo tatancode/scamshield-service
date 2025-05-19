@@ -4,11 +4,11 @@
 
 ## How to use this guide
 
-This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow steps. Do the **Steps** in order. When everything in **Done when** is true, the ticket is finished and ready to merge. Unless we say otherwise, run commands from the top level of your project.
+This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow steps. Do the **Steps** in order. When everything in **Done when** is true, the ticket is finished and ready to merge. Unless we say otherwise, run commands from the top level of your project.
 
 ---
 
-### T‑01  Create the GitHub repo
+### T‑01  Create the GitHub repo
 
 | Goal | *A private repo with a licence, README, and **`.gitignore`* |
 | ---- | ----------------------------------------------------------- |
@@ -25,7 +25,7 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
    ```
 5. Create a `README.md` with:
    - One sentence about what the service does.
-   - The “Programme Aim” paragraph from the project brief.
+   - The "Programme Aim" paragraph from the project brief.
    - A small table of the tech stack.
 6. Save, stage, and push:
    ```bash
@@ -41,7 +41,7 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 ---
 
-### T‑02  Set up Spring Boot
+### T‑02  Set up Spring Boot
 
 | Goal | *`mvn spring-boot:run`** starts the app and **`/health`** returns 200* |
 | ---- | ---------------------------------------------------------------------- |
@@ -53,8 +53,8 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
    mvn -B archetype:generate -DgroupId=com.scamshield -DartifactId=analyzer-service \
        -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
    ```
-2. Switch to Spring Boot 3:
-   - Replace the generated `pom.xml` with one that uses `spring-boot-starter-parent` 3.2.x.
+2. Switch to Spring Boot 3:
+   - Replace the generated `pom.xml` with one that uses `spring-boot-starter-parent` 3.2.x.
    - Add these dependencies: `spring-boot-starter-web`, `spring-boot-starter-validation`, `spring-boot-starter-test`.
 3. Add a tiny controller:
    ```java
@@ -81,7 +81,7 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 ---
 
-### T‑03  Add API docs with OpenAPI & Swagger
+### T‑03  Add API docs with OpenAPI & Swagger
 
 | Goal | *`openapi.yaml`** is in the repo and Swagger UI works* |
 | ---- | ------------------------------------------------------ |
@@ -168,9 +168,9 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 ---
 
-### T‑04  Use an environment variable for the OpenAI key
+### T‑04  Use an environment variable for the OpenAI key
 
-| Goal | *App stops if **`OPENAI_API_KEY`** isn’t set* |
+| Goal | *App stops if **`OPENAI_API_KEY`** isn't set* |
 | ---- | --------------------------------------------- |
 
 **Steps**
@@ -189,7 +189,7 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 **Done when**
 
 - The app refuses to start without the key.
-- Tests cover this at 80 % or better.
+- Tests cover this at 80 % or better.
 
 ---
 
@@ -244,46 +244,105 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 ---
 
-### T‑06  Add PostgreSQL with Docker and Flyway
+### T‑06  Add PostgreSQL with Docker and Liquibase
 
-| Goal | *`docker compose up`** starts Postgres and runs migration 1* |
+| Goal | *`docker compose up`** starts Postgres and runs migration 1* |
 | ---- | ------------------------------------------------------------ |
 
 **Steps**
 
-1. Write `docker-compose.yml` that starts `postgres:16` with `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
-2. Add `org.flywaydb:flyway-core` to `pom.xml`.
-3. Make `V1__create_invocation_table.sql`:
-   ```sql
-   CREATE TABLE invocation (
-     id UUID PRIMARY KEY,
-     received_at TIMESTAMPTZ DEFAULT now(),
-     latency_ms INT,
-     score INT CHECK (score BETWEEN 0 AND 100),
-     message TEXT
-   );
+1. Write `docker-compose.yml` that starts `postgres:16` with `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`:
+   ```yaml
+   version: '3.8'
+   services:
+     db:
+       image: postgres:16
+       environment:
+         POSTGRES_USER: scamshield
+         POSTGRES_PASSWORD: scamshield
+         POSTGRES_DB: scamshield
+       ports:
+         - "5432:5432"
+       volumes:
+         - postgres_data:/var/lib/postgresql/data
+   volumes:
+     postgres_data:
    ```
-4. Set the datasource in `application.yaml`:
+
+2. Add Liquibase dependencies to `pom.xml`:
+   ```xml
+   <dependency>
+     <groupId>org.liquibase</groupId>
+     <artifactId>liquibase-core</artifactId>
+   </dependency>
+   ```
+
+3. Create `src/main/resources/db/changelog/db.changelog-master.xml`:
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <databaseChangeLog
+       xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+       
+       <changeSet id="1" author="scamshield">
+           <createTable tableName="analysis">
+               <column name="id" type="UUID">
+                   <constraints primaryKey="true" nullable="false"/>
+               </column>
+               <column name="received_at" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+               <column name="latency_ms" type="INT"/>
+               <column name="score" type="INT">
+                   <constraints checkConstraint="score BETWEEN 0 AND 100"/>
+               </column>
+               <column name="message" type="TEXT"/>
+           </createTable>
+       </changeSet>
+   </databaseChangeLog>
+   ```
+
+4. Configure database connection in `application.yaml`:
    ```yaml
    spring:
      datasource:
        url: jdbc:postgresql://localhost:5432/scamshield
+       username: scamshield
+       password: scamshield
+     liquibase:
+       change-log: classpath:db/changelog/db.changelog-master.xml
    ```
-5. Run:
+
+5. Test locally:
    ```bash
    docker compose up -d
-   mvn test  # Flyway runs
+   mvn spring-boot:run  # Liquibase runs during application startup
    ```
-6. Commit: `feat: PostgreSQL and Flyway migration`.
+
+6. Update `application.yaml` to support environment-based configuration:
+   ```yaml
+   spring:
+     datasource:
+       url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/scamshield}
+       username: ${DATABASE_USERNAME:scamshield}
+       password: ${DATABASE_PASSWORD:scamshield}
+     liquibase:
+       change-log: classpath:db/changelog/db.changelog-master.xml
+   ```
+
+7. Commit: `feat: PostgreSQL and Liquibase migration`.
 
 **Done when**
 
 - Docker logs say **database system is ready**.
-- A second Flyway run still shows schema version 1 (idempotent).
+- A second Liquibase run doesn't recreate the table (idempotent).
+- The application can connect to the database and the analysis table exists.
+
+**Note:** Setting up PostgreSQL on fly.io will be done in T-15 when deploying the application.
 
 ---
 
-### T‑07  Wrap OpenAI calls with retries
+### T‑07  Wrap OpenAI calls with retries
 
 | Goal | *Service talks to GPT‑4o and retries on errors* |
 | ---- | ----------------------------------------------- |
@@ -304,7 +363,7 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 ---
 
-### T‑08  Score messages
+### T‑08  Score messages
 
 | Goal | *Combine regex hits and model chance into a 0–100 score* |
 | ---- | -------------------------------------------------------- |
@@ -326,7 +385,7 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 ---
 
-### T‑09  Explain the score
+### T‑09  Explain the score
 
 | Goal | *Give a reason in 3 sentences or fewer* |
 | ---- | --------------------------------------- |
@@ -341,11 +400,11 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 **Done when**
 
-- Example: “Found a password reset link and urgent language. Model risk is high.”
+- Example: "Found a password reset link and urgent language. Model risk is high."
 
 ---
 
-### T‑10  Hook everything together
+### T‑10  Hook everything together
 
 | Goal | *POST **`/api/analyze`** returns score, explanation, and saves it* |
 | ---- | ------------------------------------------------------------------ |
@@ -369,27 +428,27 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 ---
 
-### T‑11  Save every request
+### T‑11  Save every request
 
 | Goal | *Store latency, score, and message in the DB* |
 | ---- | --------------------------------------------- |
 
 **Steps**
 
-1. Make `InvocationRepository` (`CrudRepository`).
-2. Save an `Invocation` from داخل `AnalyzeService` after computing.
+1. Make `AnalysisRepository` (`CrudRepository`).
+2. Save an `Analysis` from داخل `AnalyzeService` after computing.
 3. Add a test that row count goes up after a call.
-4. Commit: `feat: save invocations`.
+4. Commit: `feat: save analyses`.
 
 **Done when**
 
-- `SELECT COUNT(*) FROM invocation;` increases each time.
+- `SELECT COUNT(*) FROM analysis;` increases each time.
 
 ---
 
-### T‑12  Hit 80 % test coverage
+### T‑12  Hit 80 % test coverage
 
-| Goal | *Jacoco ≥ 80 %; CI fails below that* |
+| Goal | *Jacoco ≥ 80 %; CI fails below that* |
 | ---- | ------------------------------------ |
 
 **Steps**
@@ -401,11 +460,11 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 **Done when**
 
-- `mvn verify` fails if coverage < 80 %.
+- `mvn verify` fails if coverage < 80 %.
 
 ---
 
-### T‑13  Make Docker images
+### T‑13  Make Docker images
 
 | Goal | *`docker-compose.yml`** runs the app and DB together* |
 | ---- | ----------------------------------------------------- |
@@ -438,7 +497,7 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 ---
 
-### T‑14  Set up CI
+### T‑14  Set up CI
 
 | Goal | *GitHub Actions builds, tests, and pushes Docker images* |
 | ---- | -------------------------------------------------------- |
@@ -446,7 +505,7 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 **Steps**
 
 1. Create `.github/workflows/ci.yml` with two jobs:
-   - **build**: checkout, set JDK 21, run `mvn verify`, upload Jacoco report.
+   - **build**: checkout, set JDK 21, run `mvn verify`, upload Jacoco report.
    - **docker**: on push to `main`, build and push image to GHCR (`ghcr.io/<USER>/scam-shield-analyzer`).
 2. Use `actions/cache` for Maven dependencies.
 3. Add `mvn spotbugs:spotbugs` for static analysis.
@@ -458,21 +517,88 @@ This guide breaks each ticket for Iteration 1 into clear, easy‑to‑follow st
 
 ---
 
-### T‑15  Deploy to staging (Fly.io)
+### T‑15  Deploy to staging (Fly.io)
 
 | Goal | *Public staging URL answers **`/health`** with OK* |
 | ---- | -------------------------------------------------- |
 
 **Steps**
 
-1. Run `fly launch` and name the app `scam-shield-analyzer-staging`.
-2. Set the secret:
+1. Run `fly launch` to create the app (choose "Deploy Now" when prompted):
+   ```bash
+   fly launch --name scamshield-analyzer-staging
+   ```
+
+2. Create a Managed PostgreSQL database on fly.io (recommended):
+   ```bash
+   # From the Fly.io dashboard, create a new Managed Postgres cluster
+   # Select region, plan and storage as appropriate
+   ```
+   
+   Or for an unmanaged PostgreSQL database (less recommended):
+   ```bash
+   fly postgres create --name scamshield-db
+   ```
+
+3. Attach the database to your app:
+   ```bash
+   # For Managed Postgres, copy connection string from dashboard
+   fly secrets set DATABASE_URL="postgres://username:password@host:port/database"
+   
+   # For unmanaged Postgres:
+   fly postgres attach --app scamshield-analyzer-staging scamshield-db
+   ```
+
+4. Set the OpenAI API key secret:
    ```bash
    fly secrets set OPENAI_API_KEY=<your-key>
    ```
-3. Add `deploy.yml` that runs `flyctl deploy --remote-only` on push to `main`.
-4. Test:
-   ```bash
-   curl https://scam-shield
 
+5. Deploy your application:
+   ```bash
+   fly deploy
    ```
+
+6. Verify the deployment:
+   ```bash
+   curl https://scamshield-analyzer-staging.fly.dev/health
+   ```
+
+7. Check database connection:
+   ```bash
+   # For managed Postgres:
+   fly mpg connect
+   
+   # For unmanaged Postgres:
+   fly postgres connect -a scamshield-db
+   
+   # Then run:
+   \dt  # Should show the analysis table
+   SELECT COUNT(*) FROM DATABASECHANGELOG;  # Should show Liquibase has run
+   ```
+
+8. Create a GitHub action for automated deployments in `.github/workflows/deploy.yml`:
+   ```yaml
+   name: Deploy to Fly.io
+   on:
+     push:
+       branches:
+         - main
+   jobs:
+     deploy:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v4
+         - uses: superfly/flyctl-actions/setup-flyctl@master
+         - run: flyctl deploy --remote-only
+           env:
+             FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+   ```
+
+9. Commit: `feat: deploy to fly.io staging`.
+
+**Done when**
+
+- `curl https://scamshield-analyzer-staging.fly.dev/health` returns **OK**.
+- The application can be accessed publicly with a valid SSL certificate.
+- Database access works correctly in production.

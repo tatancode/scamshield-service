@@ -1,12 +1,12 @@
 package com.valor.scamshield_service;
 
-import com.valor.scamshield_service.config.OpenAiProperties;
+import com.valor.scamshield_service.config.AiModelConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @SpringBootApplication
-@EnableConfigurationProperties(OpenAiProperties.class)
+@EnableConfigurationProperties(AiModelConfig.class)
 public class ScamshieldServiceApplication {
 
 	public static void main(String[] args) {

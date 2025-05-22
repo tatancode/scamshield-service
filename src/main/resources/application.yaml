@@ -18,5 +18,5 @@ springdoc:
 models:
   openai:
     name: gpt-4.1
-    api-key: ${OPENAI_API_KEY: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}
+    api-key: ${OPENAI_API_KEY:my-key}
     endpoint: https://api.openai.com/v1/responses

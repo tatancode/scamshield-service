@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: scamshield-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/scamshield
+    username: scamshield
+    password: scamshield
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+models:
+  openai:
+    name: gpt-4.1
+    api-key: ${OPENAI_API_KEY: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}
+    endpoint: https://api.openai.com/v1/responses
